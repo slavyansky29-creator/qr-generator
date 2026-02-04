@@ -26,6 +26,12 @@
             <p class="lead">Создавайте QR-коды с логотипами, файлами и скачивайте в любых форматах</p>
         </div>
 
+        <!-- Контейнер для ошибок -->
+        <div id="errorContainer" class="alert alert-danger" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="errorMessage"></span>
+        </div>
+
         <div class="row">
             <!-- Левая колонка: Настройки -->
             <div class="col-lg-8">
@@ -70,7 +76,11 @@
                                         <span class="input-group-text"><i class="fas fa-globe"></i></span>
                                         <input type="url" class="form-control" id="urlInput" 
                                                placeholder="https://example.com" value="https://github.com">
+                                        <button class="btn btn-outline-secondary" type="button" id="testUrlBtn">
+                                            <i class="fas fa-check"></i> Проверить
+                                        </button>
                                     </div>
+                                    <div class="form-text" id="urlStatus"></div>
                                 </div>
                             </div>
 
