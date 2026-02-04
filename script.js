@@ -12,8 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     let html5QrCode = null;
-    let logoImage = new Image();
-    let uploadToken = null;
+    let logoImage = null;
     
     // --- ЭЛЕМЕНТЫ DOM ---
     const elements = {
@@ -87,8 +86,14 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSizeDisplay();
         setupFileUpload();
         
+        // Заполняем демо-данные
+        elements.urlInput.value = 'https://github.com';
+        elements.textInput.value = 'Добро пожаловать в мир QR-кодов!';
+        
         // Генерируем демо QR-код
-        setTimeout(generateQRCode, 1000);
+        setTimeout(() => {
+            generateQRCode();
+        }, 500);
     }
     
     // --- НАСТРОЙКА СОБЫТИЙ ---
@@ -100,23 +105,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Обновление размера
         elements.qrSize.addEventListener('input', updateSizeDisplay);
-        elements.qrSize.addEventListener('change', generateQRCode);
         
         // Цвета
         elements.qrColor.addEventListener('change', function() {
             currentQR.color = this.value;
-            generateQRCode();
         });
         
         elements.bgColor.addEventListener('change', function() {
             currentQR.bgColor = this.value;
-            generateQRCode();
         });
         
         // Логотип
         elements.logoUpload.addEventListener('change', handleLogoUpload);
         elements.removeLogoBtn.addEventListener('click', removeLogo);
-        elements.logoPreview.addEventListener('click', () => elements.logoUpload.click());
+        elements.logoPreview.addEventListener('click', () => {
+            elements.logoUpload.click();
+        });
         
         // Генерация
         elements.generateBtn.addEventListener('click', generateQRCode);
@@ -139,9 +143,18 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.stopScanner.addEventListener('click', stopScanner);
         elements.downloadScannedFile.addEventListener('click', downloadScannedFile);
         
-        // Загрузка файлов
+        // Загрузка файлов - ОСНОВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ!
         elements.imageUpload.addEventListener('change', handleMediaUpload);
         elements.videoUpload.addEventListener('change', handleMediaUpload);
+        
+        // Клик по областям загрузки медиа
+        document.getElementById('imageUploadBox').addEventListener('click', () => {
+            elements.imageUpload.click();
+        });
+        
+        document.getElementById('videoUploadBox').addEventListener('click', () => {
+            elements.videoUpload.click();
+        });
     }
     
     // --- ФУНКЦИИ ПРИЛОЖЕНИЯ ---
@@ -151,19 +164,14 @@ document.addEventListener('DOMContentLoaded', function() {
         currentQR.type = type;
         
         // Скрываем все формы
-        elements.forms.forEach(form => form.style.display = 'none');
+        elements.forms.forEach(form => {
+            form.style.display = 'none';
+        });
         
         // Показываем нужную форму
-        document.getElementById(`${type}Form`).style.display = 'block';
-        
-        // Очищаем превью при переключении
-        if (type !== 'files') {
-            elements.filePreview.innerHTML = '';
-            currentQR.files = [];
-        }
-        if (type !== 'media') {
-            elements.mediaPreview.innerHTML = '';
-            currentQR.mediaFiles = [];
+        const activeForm = document.getElementById(`${type}Form`);
+        if (activeForm) {
+            activeForm.style.display = 'block';
         }
     }
     
@@ -174,41 +182,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function setupFileUpload() {
-        // Настройка drag & drop
-        elements.dropzoneArea.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#3498db';
-            this.style.background = 'rgba(52, 152, 219, 0.1)';
-        });
-        
-        elements.dropzoneArea.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#3498db';
-            this.style.background = 'rgba(52, 152, 219, 0.05)';
-        });
-        
-        elements.dropzoneArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#3498db';
-            this.style.background = 'rgba(52, 219, 152, 0.05)';
-            handleFileUpload(e.dataTransfer.files);
-        });
-        
-        elements.dropzoneArea.addEventListener('click', function() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.multiple = true;
-            input.accept = '*/*';
-            input.onchange = function(e) {
-                handleFileUpload(e.target.files);
-            };
-            input.click();
-        });
+        // Настройка drag & drop для файлов
+        if (elements.dropzoneArea) {
+            elements.dropzoneArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#3498db';
+                this.style.background = 'rgba(52, 152, 219, 0.1)';
+            });
+            
+            elements.dropzoneArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#3498db';
+                this.style.background = 'rgba(52, 152, 219, 0.05)';
+            });
+            
+            elements.dropzoneArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#3498db';
+                this.style.background = 'rgba(52, 219, 152, 0.05)';
+                handleFileUpload(e.dataTransfer.files);
+            });
+            
+            elements.dropzoneArea.addEventListener('click', function() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = '*/*';
+                input.onchange = function(e) {
+                    handleFileUpload(e.target.files);
+                };
+                input.click();
+            });
+        }
     }
     
-    async function handleFileUpload(files) {
+    function handleFileUpload(files) {
         if (files.length > 10) {
-            alert('Максимум 10 файлов');
+            showNotification('Максимум 10 файлов', 'warning');
             return;
         }
         
@@ -217,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         for (let file of files) {
             if (file.size > 50 * 1024 * 1024) { // 50MB
-                alert(`Файл ${file.name} слишком большой (макс. 50MB)`);
+                showNotification(`Файл ${file.name} слишком большой (макс. 50MB)`, 'warning');
                 continue;
             }
             
@@ -250,6 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const fileName = this.dataset.name;
                 currentQR.files = currentQR.files.filter(f => f.name !== fileName);
                 this.closest('.file-preview-item').remove();
+                showNotification('Файл удален', 'info');
             });
         });
     }
@@ -258,37 +269,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const files = Array.from(e.target.files);
         const isImage = e.target.id === 'imageUpload';
         
+        // Очищаем превью при новой загрузке
+        if (isImage) {
+            currentQR.mediaFiles = currentQR.mediaFiles.filter(f => !f.type.startsWith('image/'));
+        } else {
+            currentQR.mediaFiles = currentQR.mediaFiles.filter(f => !f.type.startsWith('video/'));
+        }
+        
+        // Очищаем соответствующий превью
+        if (isImage) {
+            elements.mediaPreview.innerHTML = elements.mediaPreview.innerHTML.replace(/<div class="col-md-6 mb-3">[\s\S]*?<\/div>/g, '');
+        }
+        
         files.forEach(file => {
             if (isImage && !file.type.startsWith('image/')) {
-                alert('Пожалуйста, загружайте только изображения');
+                showNotification('Пожалуйста, загружайте только изображения', 'warning');
                 return;
             }
             if (!isImage && !file.type.startsWith('video/')) {
-                alert('Пожалуйста, загружайте только видео');
+                showNotification('Пожалуйста, загружайте только видео', 'warning');
                 return;
             }
             
             currentQR.mediaFiles.push(file);
             
             const col = document.createElement('div');
-            col.className = 'col-md-6 mb-3';
+            col.className = 'col-md-6 mb-3 fade-in';
             
             col.innerHTML = `
                 <div class="media-preview-item">
                     <div class="media-thumbnail">
                         ${isImage ? 
-                            `<img src="${URL.createObjectURL(file)}" alt="${file.name}">` :
+                            `<img src="${URL.createObjectURL(file)}" alt="${file.name}" style="max-width: 100px; max-height: 100px;">` :
                             `<i class="fas fa-film fa-3x"></i>`
                         }
                     </div>
-                    <div class="media-info">
-                        <small>${file.name}</small>
+                    <div class="media-info mt-2">
+                        <small class="d-block">${file.name.substring(0, 20)}${file.name.length > 20 ? '...' : ''}</small>
                         <small class="text-muted">${formatFileSize(file.size)}</small>
                     </div>
+                    <button class="btn btn-sm btn-outline-danger mt-2 remove-media" data-name="${file.name}">
+                        <i class="fas fa-times"></i> Удалить
+                    </button>
                 </div>
             `;
             
             elements.mediaPreview.appendChild(col);
+        });
+        
+        // Добавляем обработчики удаления для медиа
+        document.querySelectorAll('.remove-media').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const fileName = this.dataset.name;
+                currentQR.mediaFiles = currentQR.mediaFiles.filter(f => f.name !== fileName);
+                this.closest('.col-md-6').remove();
+                showNotification('Медиафайл удален', 'info');
+            });
         });
     }
     
@@ -297,19 +333,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!file) return;
         
         if (!file.type.startsWith('image/')) {
-            alert('Пожалуйста, выберите файл изображения');
+            showNotification('Пожалуйста, выберите файл изображения', 'warning');
             return;
         }
         
         const reader = new FileReader();
         reader.onload = function(event) {
-            logoImage.src = event.target.result;
+            logoImage = new Image();
             logoImage.onload = function() {
                 currentQR.logo = logoImage;
-                elements.logoPreview.innerHTML = `<img src="${event.target.result}" alt="Логотип">`;
+                elements.logoPreview.innerHTML = `<img src="${event.target.result}" alt="Логотип" style="width: 100%; height: 100%; object-fit: contain; border-radius: 10px;">`;
                 showNotification('Логотип загружен успешно!', 'success');
                 generateQRCode();
             };
+            logoImage.src = event.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -327,20 +364,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function generateQRCode() {
         const data = getDataForQRType();
-        if (!data) {
+        if (!data && currentQR.type !== 'files' && currentQR.type !== 'media') {
             showNotification('Пожалуйста, заполните все обязательные поля', 'warning');
             return;
         }
         
-        currentQR.data = data;
+        // Для файлов и медиа проверяем, есть ли файлы
+        if ((currentQR.type === 'files' && currentQR.files.length === 0) ||
+            (currentQR.type === 'media' && currentQR.mediaFiles.length === 0)) {
+            showNotification('Пожалуйста, загрузите хотя бы один файл', 'warning');
+            return;
+        }
+        
+        currentQR.data = data || 'Данные для QR-кода';
         
         // Показываем статус
+        const originalText = elements.generateBtn.innerHTML;
         elements.generateBtn.disabled = true;
         elements.generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Генерация...';
         
         try {
-            await generateQRCodeImage(data);
-            await generateQRCodeSVG(data);
+            await generateQRCodeImage();
             
             // Обновляем информацию
             updateQRInfo();
@@ -352,10 +396,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('QR-код успешно сгенерирован!', 'success');
         } catch (error) {
             console.error('Ошибка генерации:', error);
-            showNotification('Ошибка при генерации QR-кода', 'error');
+            showNotification('Ошибка при генерации QR-кода: ' + error.message, 'error');
         } finally {
             elements.generateBtn.disabled = false;
-            elements.generateBtn.innerHTML = '<i class="fas fa-bolt"></i> Сгенерировать QR-код';
+            elements.generateBtn.innerHTML = originalText;
         }
     }
     
@@ -364,35 +408,30 @@ document.addEventListener('DOMContentLoaded', function() {
         
         switch(type) {
             case 'url':
-                return elements.urlInput.value || 'https://github.com';
+                return elements.urlInput.value.trim();
                 
             case 'text':
-                return elements.textInput.value || 'Добро пожаловать в мир QR-кодов!';
+                return elements.textInput.value.trim();
                 
             case 'files':
-                // Для файлов создаем специальный URL
-                if (currentQR.files.length === 0) {
-                    return null;
-                }
-                // В реальном приложении здесь был бы серверный endpoint
-                return `files:${currentQR.files.length}_files_uploaded`;
+                // Для демо-версии просто показываем информацию о файлах
+                const fileNames = currentQR.files.map(f => f.name).join(', ');
+                return `Файлы (${currentQR.files.length}): ${fileNames}`;
                 
             case 'media':
-                if (currentQR.mediaFiles.length === 0) {
-                    return null;
-                }
-                return `media:${currentQR.mediaFiles.length}_media_files`;
+                const mediaNames = currentQR.mediaFiles.map(f => f.name).join(', ');
+                return `Медиафайлы (${currentQR.mediaFiles.length}): ${mediaNames}`;
                 
             default:
-                return 'https://github.com';
+                return 'Данные для QR-кода';
         }
     }
     
-    function generateQRCodeImage(data) {
+    function generateQRCodeImage() {
         return new Promise((resolve, reject) => {
             // Очищаем контейнер
-            elements.qrCanvas.style.display = 'none';
-            elements.qrSVG.style.display = 'none';
+            const qrContainer = elements.qrPreview;
+            qrContainer.innerHTML = '';
             
             const size = currentQR.size;
             const fgColor = currentQR.color;
@@ -400,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Создаем canvas для QR-кода
             QRCode.toCanvas(
-                data,
+                currentQR.data,
                 {
                     width: size,
                     margin: 2,
@@ -423,11 +462,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     canvas.id = 'qrCanvas';
                     canvas.style.display = 'block';
+                    canvas.style.maxWidth = '100%';
+                    canvas.style.height = 'auto';
                     
-                    // Очищаем и добавляем canvas
-                    elements.qrPreview.innerHTML = '';
-                    elements.qrPreview.appendChild(canvas);
-                    
+                    qrContainer.appendChild(canvas);
                     resolve();
                 }
             );
@@ -448,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Добавляем белую рамку
         ctx.fillStyle = '#ffffff';
-        const borderSize = logoSize * 0.2;
+        const borderSize = logoSize * 0.1;
         ctx.fillRect(
             x - borderSize/2,
             y - borderSize/2,
@@ -463,14 +501,6 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.restore();
     }
     
-    function generateQRCodeSVG(data) {
-        return new Promise((resolve) => {
-            // В этой версии просто резолвим промис
-            // В реальном приложении здесь была бы генерация SVG
-            resolve();
-        });
-    }
-    
     function updateQRInfo() {
         const type = document.querySelector('input[name="contentType"]:checked').value;
         const typeNames = {
@@ -483,12 +513,12 @@ document.addEventListener('DOMContentLoaded', function() {
         let contentInfo = '';
         switch(type) {
             case 'url':
-                contentInfo = elements.urlInput.value.substring(0, 50);
-                if (elements.urlInput.value.length > 50) contentInfo += '...';
+                contentInfo = elements.urlInput.value.substring(0, 30);
+                if (elements.urlInput.value.length > 30) contentInfo += '...';
                 break;
             case 'text':
-                contentInfo = elements.textInput.value.substring(0, 50);
-                if (elements.textInput.value.length > 50) contentInfo += '...';
+                contentInfo = elements.textInput.value.substring(0, 30);
+                if (elements.textInput.value.length > 30) contentInfo += '...';
                 break;
             case 'files':
                 contentInfo = `Файлов: ${currentQR.files.length}`;
@@ -507,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const canvas = document.getElementById('qrCanvas');
         if (canvas) {
             const dataUrl = canvas.toDataURL('image/png');
-            elements.qrShareUrl.value = dataUrl.substring(0, 100) + '...';
+            elements.qrShareUrl.value = dataUrl;
         }
     }
     
@@ -529,15 +559,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 extension = 'jpg';
                 break;
             case 'svg':
-                // Для SVG нужна отдельная реализация
-                showNotification('SVG скачивание временно недоступно', 'info');
+                // Для SVG создаем простую SVG версию
+                downloadSVG();
                 return;
             default:
                 mimeType = 'image/png';
                 extension = 'png';
         }
         
-        const dataUrl = canvas.toDataURL(mimeType);
+        const dataUrl = canvas.toDataURL(mimeType, format === 'jpeg' ? 0.9 : 1.0);
         const link = document.createElement('a');
         link.download = `qr-code-${Date.now()}.${extension}`;
         link.href = dataUrl;
@@ -548,13 +578,49 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification(`QR-код скачан в формате ${format.toUpperCase()}!`, 'success');
     }
     
+    function downloadSVG() {
+        // Создаем простой SVG QR-код
+        const canvas = document.getElementById('qrCanvas');
+        if (!canvas) return;
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${currentQR.size}" height="${currentQR.size}">
+            <image href="${dataUrl}" width="100%" height="100%"/>
+        </svg>`;
+        
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `qr-code-${Date.now()}.svg`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showNotification('QR-код скачан в формате SVG!', 'success');
+    }
+    
     function copyShareUrl() {
+        if (!elements.qrShareUrl.value) {
+            showNotification('Сначала сгенерируйте QR-код', 'warning');
+            return;
+        }
+        
         elements.qrShareUrl.select();
         elements.qrShareUrl.setSelectionRange(0, 99999);
         
         try {
-            navigator.clipboard.writeText(elements.qrShareUrl.value);
-            showNotification('Ссылка скопирована в буфер обмена!', 'success');
+            navigator.clipboard.writeText(elements.qrShareUrl.value)
+                .then(() => {
+                    showNotification('Ссылка скопирована в буфер обмена!', 'success');
+                })
+                .catch(() => {
+                    // Fallback для старых браузеров
+                    document.execCommand('copy');
+                    showNotification('Ссылка скопирована!', 'success');
+                });
         } catch (err) {
             showNotification('Не удалось скопировать ссылку', 'error');
         }
@@ -611,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             col.innerHTML = `
                 <div class="qr-library-item">
-                    <img src="${item.image}" alt="QR-код" class="img-fluid mb-2">
+                    <img src="${item.image}" alt="QR-код" class="img-fluid mb-2" style="width: 100px; height: 100px; object-fit: contain;">
                     <p class="mb-1 small"><strong>${item.type}</strong></p>
                     <p class="mb-1 small text-muted">${new Date(item.timestamp).toLocaleDateString()}</p>
                     <button class="btn btn-sm btn-outline-primary w-100 use-qr-btn" data-index="${index}">
@@ -646,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Обновляем интерфейс
             elements.qrSize.value = item.size;
-            elements.sizeValue.textContent = item.size;
+            updateSizeDisplay();
             elements.qrColor.value = item.color;
             elements.bgColor.value = item.bgColor;
             
@@ -707,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.stopScanner.style.display = 'inline-block';
         }).catch(err => {
             console.error('Не удалось запустить камеру:', err);
-            showNotification('Не удалось получить доступ к камере', 'error');
+            showNotification('Не удалось получить доступ к камере. Проверьте разрешения.', 'error');
         });
     }
     
@@ -745,6 +811,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'mov': 'fas fa-file-video',
             'zip': 'fas fa-file-archive',
             'rar': 'fas fa-file-archive',
+            '7z': 'fas fa-file-archive',
             'xls': 'fas fa-file-excel',
             'xlsx': 'fas fa-file-excel',
             'ppt': 'fas fa-file-powerpoint',
@@ -762,6 +829,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showNotification(message, type = 'info') {
+        // Удаляем старые уведомления
+        document.querySelectorAll('.custom-notification').forEach(el => el.remove());
+        
         // Создаем уведомление
         const alertClass = {
             'success': 'alert-success',
@@ -778,13 +848,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }[type] || 'fa-info-circle';
         
         const notification = document.createElement('div');
-        notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+        notification.className = `alert ${alertClass} alert-dismissible fade show custom-notification position-fixed`;
         notification.style.cssText = `
             top: 20px;
             right: 20px;
             z-index: 9999;
             min-width: 300px;
+            max-width: 400px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
         `;
         
         notification.innerHTML = `
@@ -799,8 +871,21 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 150);
+                setTimeout(() => notification.remove(), 300);
             }
         }, 5000);
+        
+        // Добавляем CSS анимацию
+        if (!document.querySelector('#notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 });
