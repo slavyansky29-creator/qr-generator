@@ -28,82 +28,57 @@ body {
 }
 
 .card {
-    border-radius: 15px;
-    border: 1px solid #eee;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
     overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
     margin-bottom: 20px;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
 .card-header {
-    border-radius: 15px 15px 0 0 !important;
+    border-radius: 12px 12px 0 0 !important;
     padding: 1rem 1.5rem;
     font-weight: 600;
 }
 
 .btn-group .btn {
-    border-radius: 8px !important;
-    margin: 3px;
-    transition: all 0.3s;
+    border-radius: 6px !important;
+    margin: 2px;
 }
 
 .btn-check:checked + .btn {
     background-color: var(--primary);
     border-color: var(--primary);
     color: white;
-    transform: scale(1.05);
 }
 
 /* Область предпросмотра QR-кода */
 .qr-preview {
-    background: white;
+    background: #f8f9fa;
     border-radius: 10px;
-    padding: 20px;
+    padding: 30px;
     min-height: 300px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    position: relative;
     border: 2px dashed #ddd;
 }
 
-.qr-preview canvas {
+/* QR-код результат */
+#qrResult img {
     max-width: 100%;
     max-height: 250px;
+    border: 1px solid #ddd;
     border-radius: 8px;
-}
-
-/* Логотип в центре QR-кода */
-.qr-logo-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    padding: 10px;
     background: white;
-    border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    border: 2px solid white;
-}
-
-.qr-logo-overlay img {
-    width: 50px;
-    height: 50px;
-    object-fit: contain;
-    border-radius: 5px;
 }
 
 /* Область загрузки файлов */
 .dropzone-area {
     border: 2px dashed #3498db;
     border-radius: 10px;
-    padding: 30px 20px;
+    padding: 25px 15px;
     text-align: center;
     background: rgba(52, 152, 219, 0.05);
     cursor: pointer;
@@ -112,20 +87,18 @@ body {
 
 .dropzone-area:hover {
     background: rgba(52, 152, 219, 0.1);
-    border-color: #2980b9;
 }
 
 .dropzone-area i {
     color: #3498db;
-    margin-bottom: 15px;
 }
 
 /* Превью файлов */
 .file-preview-item {
     background: #f8f9fa;
     border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 8px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
     border: 1px solid #eee;
     display: flex;
     align-items: center;
@@ -146,53 +119,29 @@ body {
     font-size: 0.8em;
 }
 
-/* Загрузка логотипа */
-.logo-upload-area {
-    text-align: center;
-}
-
+/* Логотип */
 .logo-preview {
-    width: 100px;
-    height: 100px;
+    width: 60px;
+    height: 60px;
     border: 2px dashed #ddd;
-    border-radius: 10px;
-    margin: 0 auto;
+    border-radius: 8px;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s;
     background: #f8f9fa;
+    overflow: hidden;
 }
 
 .logo-preview:hover {
     border-color: var(--primary);
-    background: rgba(52, 152, 219, 0.05);
 }
 
 .logo-preview i {
-    font-size: 1.5em;
     color: #7f8c8d;
-    margin-bottom: 8px;
 }
 
-.logo-preview span {
-    color: #7f8c8d;
-    font-size: 0.8em;
-}
-
-/* Сканер */
-.scanner-window {
-    width: 100%;
-    height: 250px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #000;
-    position: relative;
-}
-
-.scanner-window video {
+.logo-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -201,43 +150,31 @@ body {
 /* Кнопки скачивания */
 .download-btn {
     border-radius: 8px;
-    padding: 10px;
-    text-align: left;
-    transition: all 0.3s;
-    margin-bottom: 8px;
-}
-
-.download-btn:hover {
-    transform: translateX(5px);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-}
-
-.download-btn i {
-    margin-right: 10px;
-    width: 20px;
+    padding: 10px 20px;
 }
 
 /* Футер */
 footer {
     border-top: 2px solid #eee;
     margin-top: 3rem;
+    background: #2c3e50;
 }
 
 footer p {
     margin-bottom: 0.5rem;
-    font-size: 0.9rem;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
     .qr-preview {
         min-height: 250px;
-        padding: 15px;
+        padding: 20px;
     }
     
     .btn-group .btn {
-        flex: 1 0 45%;
+        flex: 1 0 30%;
         margin-bottom: 5px;
+        font-size: 0.9rem;
     }
     
     .navbar-brand {
