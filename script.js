@@ -1,18 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
-    let currentQR = {
-        data: '',
-        type: 'url',
-        logo: null,
-        color: '#000000',
-        bgColor: '#FFFFFF',
-        size: 400,
-        files: []
-    };
-    
-    let html5QrCode = null;
-    let logoImage = new Image();
-    
+    let currentData = '';
+    let currentType = 'url';
+    let logoImage = null;
+    let currentFiles = [];
+    let currentQRDataUrl = '';
+
     // --- ЭЛЕМЕНТЫ DOM ---
     const elements = {
         // Типы контента
@@ -32,134 +25,88 @@ document.addEventListener('DOMContentLoaded', function() {
         logoPreview: document.getElementById('logoPreview'),
         removeLogoBtn: document.getElementById('removeLogoBtn'),
         
-        // Настройки
-        qrSize: document.getElementById('qrSize'),
-        sizeValue: document.getElementById('sizeValue'),
-        qrColor: document.getElementById('qrColor'),
-        bgColor: document.getElementById('bgColor'),
-        
         // Кнопки
         generateBtn: document.getElementById('generateBtn'),
         
-        // Предпросмотр
+        // Результат
         qrPreview: document.getElementById('qrPreview'),
-        qrCanvas: document.getElementById('qrCanvas'),
+        qrResult: document.getElementById('qrResult'),
         noQrMessage: document.getElementById('noQrMessage'),
-        
-        // Информация
-        qrInfo: document.getElementById('qrInfo'),
-        qrTypeInfo: document.getElementById('qrTypeInfo'),
-        qrSizeInfo: document.getElementById('qrSizeInfo'),
-        
-        // Скачивание
         downloadSection: document.getElementById('downloadSection'),
-        downloadBtns: document.querySelectorAll('.download-btn'),
-        
-        // Сканер
-        startScanner: document.getElementById('startScanner'),
-        stopScanner: document.getElementById('stopScanner'),
-        scannerContainer: document.getElementById('scannerContainer'),
-        scanResult: document.getElementById('scanResult'),
-        resultContent: document.getElementById('resultContent')
+        downloadBtns: document.querySelectorAll('.download-btn')
     };
-    
+
     // --- ИНИЦИАЛИЗАЦИЯ ---
     initApp();
-    
+
     function initApp() {
         setupEventListeners();
-        updateSizeDisplay();
+        
+        // Сразу генерируем QR-код с демо-данными
+        setTimeout(() => {
+            generateQRCode();
+        }, 500);
     }
-    
+
     // --- НАСТРОЙКА СОБЫТИЙ ---
     function setupEventListeners() {
         // Переключение типа контента
         elements.contentTypeRadios.forEach(radio => {
-            radio.addEventListener('change', switchContentType);
+            radio.addEventListener('change', function() {
+                currentType = this.value;
+                switchContentType(currentType);
+            });
+        });
+
+        // Загрузка файлов
+        elements.dropzoneArea.addEventListener('click', () => {
+            elements.fileUpload.click();
         });
         
-        // Обновление размера
-        elements.qrSize.addEventListener('input', updateSizeDisplay);
-        
-        // Цвета
-        elements.qrColor.addEventListener('change', function() {
-            currentQR.color = this.value;
-        });
-        
-        elements.bgColor.addEventListener('change', function() {
-            currentQR.bgColor = this.value;
-        });
-        
+        elements.fileUpload.addEventListener('change', handleFileUpload);
+
         // Логотип
         elements.logoUpload.addEventListener('change', handleLogoUpload);
         elements.removeLogoBtn.addEventListener('click', removeLogo);
         elements.logoPreview.addEventListener('click', () => elements.logoUpload.click());
-        
-        // Генерация
+
+        // Генерация QR-кода
         elements.generateBtn.addEventListener('click', function() {
             generateQRCode();
         });
-        
-        // Скачивание
+
+        // Скачивание QR-кода
         elements.downloadBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 downloadQRCode(this.dataset.format);
             });
         });
-        
-        // Загрузка файлов
-        elements.dropzoneArea.addEventListener('click', () => elements.fileUpload.click());
-        elements.fileUpload.addEventListener('change', handleFileUpload);
-        
-        // Сканер
-        elements.startScanner.addEventListener('click', startScanner);
-        elements.stopScanner.addEventListener('click', stopScanner);
     }
-    
+
     // --- ФУНКЦИИ ПРИЛОЖЕНИЯ ---
     
-    function switchContentType(e) {
-        const type = e.target.value;
-        currentQR.type = type;
-        
+    function switchContentType(type) {
         // Скрываем все формы
-        document.querySelectorAll('.content-form').forEach(form => form.style.display = 'none');
+        document.querySelectorAll('.content-form').forEach(form => {
+            form.style.display = 'none';
+        });
         
         // Показываем нужную форму
         document.getElementById(`${type}Form`).style.display = 'block';
         
-        // Очищаем превью при переключении
+        // Очищаем превью файлов если переключились с файлов
         if (type !== 'files') {
             elements.filePreview.innerHTML = '';
-            currentQR.files = [];
+            currentFiles = [];
         }
     }
-    
-    function updateSizeDisplay() {
-        const size = elements.qrSize.value;
-        elements.sizeValue.textContent = size;
-        currentQR.size = parseInt(size);
-    }
-    
-    async function handleFileUpload(e) {
+
+    function handleFileUpload(e) {
         const files = Array.from(e.target.files);
-        currentQR.files = [];
+        currentFiles = files;
         elements.filePreview.innerHTML = '';
         
-        if (files.length > 10) {
-            alert('Максимум 10 файлов');
-            return;
-        }
-        
-        for (let file of files) {
-            if (file.size > 10 * 1024 * 1024) { // 10MB
-                alert(`Файл "${file.name}" слишком большой (макс. 10MB)`);
-                continue;
-            }
-            
-            currentQR.files.push(file);
-            
-            // Создаем превью
+        files.forEach((file, index) => {
             const preview = document.createElement('div');
             preview.className = 'file-preview-item';
             
@@ -172,24 +119,57 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="file-name">${file.name}</div>
                     <div class="file-size">${size}</div>
                 </div>
-                <button class="btn btn-sm btn-outline-danger remove-file" data-name="${file.name}">
+                <button class="btn btn-sm btn-outline-danger remove-file" data-index="${index}">
                     <i class="fas fa-times"></i>
                 </button>
             `;
             
             elements.filePreview.appendChild(preview);
-        }
+        });
         
-        // Добавляем обработчики удаления
+        // Добавляем обработчики удаления файлов
         document.querySelectorAll('.remove-file').forEach(btn => {
             btn.addEventListener('click', function() {
-                const fileName = this.dataset.name;
-                currentQR.files = currentQR.files.filter(f => f.name !== fileName);
-                this.closest('.file-preview-item').remove();
+                const index = parseInt(this.dataset.index);
+                currentFiles.splice(index, 1);
+                updateFilePreview();
             });
         });
     }
-    
+
+    function updateFilePreview() {
+        elements.filePreview.innerHTML = '';
+        currentFiles.forEach((file, index) => {
+            const preview = document.createElement('div');
+            preview.className = 'file-preview-item';
+            
+            const icon = getFileIcon(file.name);
+            const size = formatFileSize(file.size);
+            
+            preview.innerHTML = `
+                <i class="${icon}"></i>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${size}</div>
+                </div>
+                <button class="btn btn-sm btn-outline-danger remove-file" data-index="${index}">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            elements.filePreview.appendChild(preview);
+        });
+        
+        // Повторно добавляем обработчики
+        document.querySelectorAll('.remove-file').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                currentFiles.splice(index, 1);
+                updateFilePreview();
+            });
+        });
+    }
+
     function handleLogoUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -201,100 +181,90 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const reader = new FileReader();
         reader.onload = function(event) {
+            logoImage = new Image();
             logoImage.src = event.target.result;
             logoImage.onload = function() {
-                currentQR.logo = logoImage;
                 elements.logoPreview.innerHTML = `<img src="${event.target.result}" alt="Логотип">`;
             };
         };
         reader.readAsDataURL(file);
     }
-    
+
     function removeLogo() {
-        currentQR.logo = null;
+        logoImage = null;
         elements.logoUpload.value = '';
-        elements.logoPreview.innerHTML = `
-            <i class="fas fa-plus"></i>
-            <span>Добавить логотип</span>
-        `;
+        elements.logoPreview.innerHTML = '<i class="fas fa-plus"></i>';
     }
-    
+
+    // ГЛАВНАЯ ФУНКЦИЯ: Генерация QR-кода
     function generateQRCode() {
-        const data = getDataForQRType();
-        if (!data) {
-            showMessage('Введите данные для генерации QR-кода', 'info');
-            return;
+        // Получаем данные в зависимости от типа
+        let data = '';
+        
+        switch(currentType) {
+            case 'url':
+                data = elements.urlInput.value.trim();
+                if (!data) {
+                    data = 'https://example.com';
+                } else if (!data.startsWith('http://') && !data.startsWith('https://')) {
+                    data = 'https://' + data;
+                }
+                break;
+                
+            case 'text':
+                data = elements.textInput.value.trim();
+                if (!data) {
+                    data = 'Пример текста для QR-кода';
+                }
+                break;
+                
+            case 'files':
+                if (currentFiles.length === 0) {
+                    data = 'Файлы не загружены';
+                } else {
+                    const fileNames = currentFiles.map(f => f.name).join(', ');
+                    data = `Файлы (${currentFiles.length}): ${fileNames}`;
+                }
+                break;
         }
         
-        currentQR.data = data;
+        currentData = data;
         
-        // Показываем статус
+        // Показываем загрузку
         elements.generateBtn.disabled = true;
         elements.generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Генерация...';
         
         // Генерируем QR-код
-        generateQRCodeImage(data);
-        
-        // Обновляем информацию
-        updateQRInfo();
-        
-        // Показываем секцию скачивания ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ГЕНЕРАЦИИ
-        setTimeout(() => {
-            elements.downloadSection.style.display = 'block';
-            elements.noQrMessage.style.display = 'none';
+        generateQRCodeImage(data, function(qrDataUrl) {
+            if (qrDataUrl) {
+                // Показываем результат
+                elements.noQrMessage.style.display = 'none';
+                elements.qrResult.style.display = 'block';
+                elements.qrResult.innerHTML = `<img src="${qrDataUrl}" alt="QR Code" id="qrImage">`;
+                currentQRDataUrl = qrDataUrl;
+                
+                // Показываем кнопки скачивания
+                elements.downloadSection.style.display = 'block';
+                
+                // Успешное сообщение
+                showMessage('QR-код успешно сгенерирован!', 'success');
+            } else {
+                showMessage('Не удалось сгенерировать QR-код', 'warning');
+            }
             
             // Восстанавливаем кнопку
             elements.generateBtn.disabled = false;
             elements.generateBtn.innerHTML = '<i class="fas fa-bolt"></i> Сгенерировать QR-код';
-            
-            showMessage('QR-код успешно сгенерирован!', 'success');
-        }, 800);
+        });
     }
-    
-    function getDataForQRType() {
-        const type = currentQR.type;
-        
-        switch(type) {
-            case 'url':
-                const url = elements.urlInput.value.trim();
-                if (!url) return 'https://example.com';
-                if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    return 'https://' + url;
-                }
-                return url;
-                
-            case 'text':
-                const text = elements.textInput.value.trim();
-                return text || 'Пример текста';
-                
-            case 'files':
-                if (currentQR.files.length === 0) {
-                    return 'Загрузите файлы для генерации QR-кода';
-                }
-                // Создаем строку с информацией о файлах
-                const fileNames = currentQR.files.map(f => f.name).join(', ');
-                return `Файлы: ${fileNames} (Всего: ${currentQR.files.length})`;
-                
-            default:
-                return 'https://example.com';
-        }
-    }
-    
-    function generateQRCodeImage(data) {
+
+    function generateQRCodeImage(data, callback) {
         try {
-            // Очищаем контейнер
-            elements.qrPreview.innerHTML = '';
-            
-            const size = currentQR.size;
-            const fgColor = currentQR.color;
-            const bgColor = currentQR.bgColor;
-            
-            // Создаем новый canvas элемент
+            // Создаем временный canvas для генерации QR-кода
             const canvas = document.createElement('canvas');
-            canvas.id = 'qrCanvas';
-            canvas.style.display = 'block';
+            const size = 300; // Фиксированный размер
             
-            // Используем библиотеку для генерации QR-кода
+            // Генерируем QR-код на canvas
             QRCode.toCanvas(
                 canvas,
                 data,
@@ -302,60 +272,47 @@ document.addEventListener('DOMContentLoaded', function() {
                     width: size,
                     margin: 2,
                     color: {
-                        dark: fgColor,
-                        light: bgColor
+                        dark: '#000000',
+                        light: '#FFFFFF'
                     },
-                    errorCorrectionLevel: 'M'
+                    errorCorrectionLevel: 'H'
                 },
                 function(err) {
                     if (err) {
-                        console.log('Ошибка генерации QR-кода:', err);
-                        // Если ошибка, пробуем сгенерировать с простыми настройками
-                        QRCode.toCanvas(
-                            canvas,
-                            data,
-                            { width: 200, margin: 1 },
-                            function(err2) {
-                                if (err2) {
-                                    showMessage('Не удалось сгенерировать QR-код', 'warning');
-                                    return;
-                                }
-                                // Добавляем логотип если есть
-                                if (currentQR.logo) {
-                                    addLogoToCanvas(canvas);
-                                }
-                                // Добавляем canvas в превью
-                                elements.qrPreview.appendChild(canvas);
-                            }
-                        );
+                        console.error('Ошибка генерации QR-кода:', err);
+                        callback(null);
                         return;
                     }
                     
-                    // Добавляем логотип если есть
-                    if (currentQR.logo) {
-                        addLogoToCanvas(canvas);
+                    // Если есть логотип, добавляем его
+                    if (logoImage) {
+                        addLogoToCanvas(canvas, logoImage, size);
                     }
                     
-                    // Добавляем canvas в превью
-                    elements.qrPreview.appendChild(canvas);
+                    // Преобразуем canvas в Data URL
+                    const dataUrl = canvas.toDataURL('image/png');
+                    callback(dataUrl);
                 }
             );
-            
         } catch (error) {
-            console.log('QR-код сгенерирован успешно');
+            console.error('Ошибка:', error);
+            callback(null);
         }
     }
-    
-    function addLogoToCanvas(canvas) {
+
+    function addLogoToCanvas(canvas, logo, qrSize) {
         try {
             const ctx = canvas.getContext('2d');
-            const size = canvas.width;
-            const logoSize = size * 0.2;
+            const logoSize = qrSize * 0.2; // 20% от размера QR-кода
             
-            const x = (size - logoSize) / 2;
-            const y = (size - logoSize) / 2;
+            // Рассчитываем позицию для логотипа (центр)
+            const x = (qrSize - logoSize) / 2;
+            const y = (qrSize - logoSize) / 2;
             
+            // Сохраняем состояние контекста
             ctx.save();
+            
+            // Добавляем белую рамку вокруг логотипа
             ctx.fillStyle = '#ffffff';
             const borderSize = logoSize * 0.2;
             ctx.fillRect(
@@ -365,143 +322,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 logoSize + borderSize
             );
             
-            ctx.drawImage(currentQR.logo, x, y, logoSize, logoSize);
+            // Рисуем логотип
+            ctx.drawImage(logo, x, y, logoSize, logoSize);
+            
+            // Восстанавливаем состояние
             ctx.restore();
         } catch (error) {
-            console.log('Логотип добавлен успешно');
+            console.log('Логотип не был добавлен:', error);
         }
     }
-    
-    function updateQRInfo() {
-        const type = currentQR.type;
-        const typeNames = {
-            'url': 'URL',
-            'text': 'Текст',
-            'files': 'Файлы'
-        };
-        
-        elements.qrTypeInfo.textContent = `Тип: ${typeNames[type]}`;
-        elements.qrSizeInfo.textContent = `Размер: ${currentQR.size}px`;
-        elements.qrInfo.style.display = 'block';
-    }
-    
+
     function downloadQRCode(format) {
-        const canvas = document.getElementById('qrCanvas');
-        if (!canvas) {
+        if (!currentQRDataUrl) {
             showMessage('Сначала сгенерируйте QR-код', 'warning');
             return;
         }
         
         try {
-            let mimeType, extension;
-            switch(format) {
-                case 'png':
-                    mimeType = 'image/png';
-                    extension = 'png';
-                    break;
-                case 'jpeg':
+            // Создаем временный image для конвертации
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                // Определяем формат и MIME type
+                let mimeType, extension;
+                if (format === 'jpeg') {
                     mimeType = 'image/jpeg';
                     extension = 'jpg';
-                    break;
-                case 'svg':
-                    // Генерируем SVG отдельно
-                    const data = currentQR.data;
-                    const size = currentQR.size;
-                    const fgColor = currentQR.color;
-                    const bgColor = currentQR.bgColor;
-                    
-                    QRCode.toString(
-                        data,
-                        {
-                            type: 'svg',
-                            width: size,
-                            margin: 2,
-                            color: {
-                                dark: fgColor,
-                                light: bgColor
-                            }
-                        },
-                        function(err, svg) {
-                            if (err) {
-                                showMessage('Не удалось сгенерировать SVG', 'warning');
-                                return;
-                            }
-                            
-                            const blob = new Blob([svg], { type: 'image/svg+xml' });
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.download = `qr-code-${Date.now()}.svg`;
-                            link.href = url;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            URL.revokeObjectURL(url);
-                            
-                            showMessage('QR-код скачан в формате SVG!', 'success');
-                        }
-                    );
-                    return;
-                    
-                default:
+                } else {
                     mimeType = 'image/png';
                     extension = 'png';
-            }
-            
-            const dataUrl = canvas.toDataURL(mimeType);
-            const link = document.createElement('a');
-            link.download = `qr-code-${Date.now()}.${extension}`;
-            link.href = dataUrl;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showMessage(`QR-код скачан в формате ${format.toUpperCase()}!`, 'success');
-        } catch (error) {
-            showMessage('Файл успешно скачан', 'success');
-        }
-    }
-    
-    function startScanner() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            return;
-        }
-        
-        try {
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const qrCodeSuccessCallback = (decodedText) => {
-                elements.resultContent.textContent = decodedText;
-                elements.scanResult.style.display = 'block';
-                showMessage('QR-код успешно отсканирован!', 'success');
-                stopScanner();
+                }
+                
+                // Конвертируем и скачиваем
+                const dataUrl = canvas.toDataURL(mimeType);
+                const link = document.createElement('a');
+                link.download = `qr-code-${Date.now()}.${extension}`;
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showMessage(`QR-код скачан в формате ${format.toUpperCase()}!`, 'success');
             };
-            
-            const config = { fps: 10, qrbox: { width: 200, height: 200 } };
-            
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                qrCodeSuccessCallback
-            ).then(() => {
-                elements.startScanner.style.display = 'none';
-                elements.stopScanner.style.display = 'inline-block';
-            }).catch(err => {
-                showMessage('Не удалось получить доступ к камере', 'warning');
-            });
+            img.src = currentQRDataUrl;
         } catch (error) {
-            showMessage('Ошибка инициализации сканера', 'warning');
+            showMessage('Ошибка при скачивании файла', 'danger');
         }
     }
-    
-    function stopScanner() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => {
-                elements.startScanner.style.display = 'inline-block';
-                elements.stopScanner.style.display = 'none';
-            });
-        }
-    }
-    
+
     // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
     
     function getFileIcon(filename) {
@@ -526,21 +399,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showMessage(message, type = 'info') {
-        // Создаем простое уведомление
+        // Удаляем старые сообщения
+        const oldMessages = document.querySelectorAll('.alert-message');
+        oldMessages.forEach(msg => msg.remove());
+        
+        // Создаем новое сообщение
         const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.className = `alert alert-${type} alert-dismissible fade show alert-message position-fixed`;
         notification.style.cssText = `
-            top: 20px;
+            top: 80px;
             right: 20px;
             z-index: 9999;
             min-width: 250px;
-            max-width: 300px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         `;
         
         notification.innerHTML = `
             ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
         `;
         
         document.body.appendChild(notification);
