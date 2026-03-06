@@ -28,7 +28,8 @@ fileInput.addEventListener('change', () => {
         const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-            textInput.value = reader.result; // Для удобства, можно вставить как base64
+            // Вставляем base64 содержимое файла
+            textInput.value = reader.result;
         };
         reader.readAsDataURL(file);
     }
@@ -39,37 +40,32 @@ generateBtn.addEventListener('click', () => {
     // Очистка предыдущего QR
     qrcodeContainer.innerHTML = '';
 
-    let data = '';
     const type = dataTypeSelect.value;
 
     if (type === 'text') {
-        data = textInput.value;
-    } else {
-        // Для файлов и архивов, можно использовать base64
-        data = textInput.value;
-        if (!data) {
-            alert('Пожалуйста, введите текст или выберите файл.');
+        const data = textInput.value;
+        createQRCode(data);
+    } else if (type === 'file' || type === 'archive' || type === 'folder' || type === 'presentation') {
+        if (fileInput.files.length === 0) {
+            alert('Пожалуйста, выберите файл.');
             return;
         }
-    }
-
-    // Встроить логотип, если выбран
-    const logoFile = logoUpload.files[0];
-    if (logoFile) {
+        const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-            createQRCode(data, reader.result);
+            const base64Data = reader.result; // base64 содержимое
+            createQRCode(base64Data);
         };
-        reader.readAsDataURL(logoFile);
-    } else {
-        createQRCode(data, null);
+        reader.readAsDataURL(file);
     }
 });
 
 // Функция создания QR
-function createQRCode(data, logoDataUrl) {
-    // Используем QRCode.js
-    // Можно дополнительно вставить логотип в центр, создавая свой собственный элемент или вставляя в canvas
+function createQRCode(data, logoDataUrl = null) {
+    // Удаляем предыдущий QR
+    qrcodeContainer.innerHTML = '';
+
+    // Создаем новый QRCode
     qrCodeInstance = new QRCode(qrcodeContainer, {
         text: data,
         width: 200,
@@ -77,15 +73,15 @@ function createQRCode(data, logoDataUrl) {
         correctLevel: QRCode.CorrectLevel.H,
     });
 
+    // Вставляем логотип, если есть
     if (logoDataUrl) {
-        // Вставляем логотип в центр
-        const qrElement = qrcodeContainer.querySelector('canvas');
-        if (qrElement) {
-            const ctx = qrElement.getContext('2d');
+        const qrCanvas = qrcodeContainer.querySelector('canvas');
+        if (qrCanvas) {
+            const ctx = qrCanvas.getContext('2d');
             const logoImg = new Image();
             logoImg.onload = () => {
-                const size = 50; // Размер логотипа
-                ctx.drawImage(logoImg, (qrElement.width - size) / 2, (qrElement.height - size) / 2, size, size);
+                const size = 50;
+                ctx.drawImage(logoImg, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
             };
             logoImg.src = logoDataUrl;
         }
@@ -100,6 +96,8 @@ downloadQRBtn.addEventListener('click', () => {
         link.href = qrCanvas.toDataURL('image/png');
         link.download = 'qrcode.png';
         link.click();
+    } else {
+        alert('Создайте QR-код перед скачиванием.');
     }
 });
 
