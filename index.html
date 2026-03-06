@@ -1,153 +1,48 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<title>QR-код с разделением и скачиванием</title>
-<!-- Подключение библиотеки QRCode.js -->
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-  }
-  #qrcode {
-    margin-top: 20px;
-  }
-  #downloadBtnContainer {
-    margin-top: 10px;
-  }
-  #fileInput {
-    margin-top: 10px;
-  }
-</style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>QR-код генератор и декодер</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Вставляем библиотеку для генерации QR -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/dist/qrcode.min.js"></script>
+    <!-- Вставляем библиотеку для декодирования QR -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 </head>
 <body>
-
-<h1>Генерация QR-кодов и скачивание</h1>
-
-<!-- Поле для выбора файла -->
-<input type="file" id="fileInput" />
-
-<!-- Контейнер для QR-кода -->
-<div id="qrcode"></div>
-
-<!-- Кнопки для управления -->
-<button id="nextQRBtn">Показать следующий QR-код</button>
-
-<!-- Контейнер для кнопки скачивания -->
-<div id="downloadBtnContainer"></div>
-
-<script>
-// ==========================
-// ВАШ СКРИПТ: script.js
-// ==========================
-
-const MAX_PARTS = 5; // максимум частей
-let currentPart = 1;
-let qrTexts = [];
-const qrcodeContainer = document.getElementById('qrcode');
-const downloadBtnContainer = document.getElementById('downloadBtnContainer');
-const nextQRBtn = document.getElementById('nextQRBtn');
-
-document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-document.getElementById('nextQRBtn').addEventListener('click', showNextQR);
-
-// Обработка выбранного файла
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const dataUrl = e.target.result;
-    generateParts(dataUrl);
-  };
-  reader.readAsDataURL(file);
-}
-
-// Разделение файла на части
-function generateParts(dataUrl) {
-  qrTexts = [];
-  for (let i = 1; i <= MAX_PARTS; i++) {
-    qrTexts.push(`part${i}:${dataUrl}`);
-  }
-  currentPart = 1;
-  showQRPart(currentPart);
-}
-
-// Показывать следующую часть
-function showNextQR() {
-  currentPart++;
-  if (currentPart > qrTexts.length) currentPart = 1;
-  showQRPart(currentPart);
-}
-
-// Показывать конкретную часть
-function showQRPart(partNumber) {
-  clearQRCode();
-  const qrText = qrTexts[partNumber - 1];
-  new QRCode(qrcodeContainer, {
-    text: qrText,
-    width: 256,
-    height: 256
-  });
-  // Вызов функции обработки QR-кода
-  handleScannedQR(qrText);
-}
-
-// Очистка QRCode
-function clearQRCode() {
-  qrcodeContainer.innerHTML = '';
-  downloadBtnContainer.innerHTML = '';
-}
-
-// Обработка распознанного QR-кода
-function handleScannedQR(qrText) {
-  // Создаем кнопку скачивания
-  createDownloadButton(qrText);
-}
-
-// Создать кнопку скачивания
-function createDownloadButton(qrText) {
-  const btn = document.createElement('button');
-  btn.textContent = 'Скачать QR-код';
-  btn.onclick = () => {
-    // Генерируем изображение QR
-    generateQRCodeImage(qrText);
-  };
-  downloadBtnContainer.innerHTML = '';
-  downloadBtnContainer.appendChild(btn);
-}
-
-// Генерация изображения QR-кода и скачивание
-function generateQRCodeImage(qrText) {
-  // Создаём временный элемент для генерации QR
-  const tempDiv = document.createElement('div');
-  new QRCode(tempDiv, {
-    text: qrText,
-    width: 512,
-    height: 512
-  });
-  // Подождать немного, чтобы QR-код создался
-  setTimeout(() => {
-    const img = tempDiv.querySelector('img');
-    if (img) {
-      const dataUrl = img.src;
-      downloadImage(dataUrl, 'qrcode.png');
-    }
-    tempDiv.remove();
-  }, 500);
-}
-
-// Скачать изображение
-function downloadImage(dataUrl, filename) {
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-</script>
-
+    <h1>QR-код генератор и декодер</h1>
+    <div class="container">
+        <!-- Левая панель: параметры -->
+        <div class="left-panel">
+            <h2>Параметры</h2>
+            <textarea id="dataInput" placeholder="Введите текст или выберите файл для кодирования..." rows="5"></textarea>
+            <button id="selectFileBtn">Выбрать файл</button>
+            <input type="file" id="fileInput" style="display:none"/>
+            <br/><br/>
+            <label>Добавить логотип (опционально):</label>
+            <input type="file" id="logoInput" accept="image/*"/>
+            <br/><br/>
+            <button id="generateBtn">Создать QR-код</button>
+            <button id="infoBtn">Информация о QR-коде</button>
+            <div id="qrInfo" class="qr-info"></div>
+        </div>
+        <!-- Правая панель: отображение QR -->
+        <div class="right-panel">
+            <h2>Генерированный QR-код</h2>
+            <canvas id="qrCanvas"></canvas>
+        </div>
+    </div>
+    <!-- Декодер -->
+    <h2>Декодировать QR-код</h2>
+    <div class="decoder-section">
+        <button id="startCameraBtn">Использовать камеру</button>
+        <input type="file" id="decodeFileInput" accept="image/*"/>
+        <br/><br/>
+        <video id="video" width="400" height="300" style="display:none;"></video>
+        <canvas id="videoCanvas" width="400" height="300" style="display:none;"></canvas>
+        <div id="decodedResult">Результат: </div>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
