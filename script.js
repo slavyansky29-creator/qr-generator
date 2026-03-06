@@ -1,173 +1,149 @@
-const generateBtn = document.getElementById('generateBtn');
-const downloadQRBtn = document.getElementById('downloadQRBtn');
-const infoBtn = document.getElementById('infoBtn');
-const qrcodeContainer = document.getElementById('qrcode');
+// Максимальный размер данных в одной QR-коде (символов)
+const MAX_QR_DATA_SIZE = 3000; 
 
-const textInput = document.getElementById('textInput');
-const fileInput = document.getElementById('fileInput');
-const chooseFileBtn = document.getElementById('chooseFileBtn');
-const logoUpload = document.getElementById('logoUpload');
+// Массив для хранения частей при декодировании
+let receivedParts = [];
+let totalParts = 0;
 
-const dataTypeSelect = document.getElementById('dataType');
-
-const startCameraBtn = document.getElementById('startCameraBtn');
-const uploadImage = document.getElementById('uploadImage');
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const decodedResult = document.getElementById('decodedResult');
-
-let currentQRCode = null;
-let qrCodeInstance = null;
-
-// Обработка выбора файла
-chooseFileBtn.addEventListener('click', () => {
-    fileInput.click();
-});
-fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = () => {
-            // Вставляем base64 содержимое файла
-            textInput.value = reader.result;
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Создание QR-кода
-generateBtn.addEventListener('click', () => {
-    // Очистка предыдущего QR
-    qrcodeContainer.innerHTML = '';
-
-    const type = dataTypeSelect.value;
-
-    if (type === 'text') {
-        const data = textInput.value;
-        createQRCode(data);
-    } else if (type === 'file' || type === 'archive' || type === 'folder' || type === 'presentation') {
-        if (fileInput.files.length === 0) {
-            alert('Пожалуйста, выберите файл.');
-            return;
-        }
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = () => {
-            const base64Data = reader.result; // base64 содержимое
-            createQRCode(base64Data);
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Функция создания QR
-function createQRCode(data, logoDataUrl = null) {
-    // Удаляем предыдущий QR
-    qrcodeContainer.innerHTML = '';
-
-    // Создаем новый QRCode
-    qrCodeInstance = new QRCode(qrcodeContainer, {
-        text: data,
-        width: 200,
-        height: 200,
-        correctLevel: QRCode.CorrectLevel.H,
-    });
-
-    // Вставляем логотип, если есть
-    if (logoDataUrl) {
-        const qrCanvas = qrcodeContainer.querySelector('canvas');
-        if (qrCanvas) {
-            const ctx = qrCanvas.getContext('2d');
-            const logoImg = new Image();
-            logoImg.onload = () => {
-                const size = 50;
-                ctx.drawImage(logoImg, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
-            };
-            logoImg.src = logoDataUrl;
-        }
-    }
+// Функция для разбиения данных на части
+function splitData(data) {
+  const parts = [];
+  for (let i = 0; i < data.length; i += MAX_QR_DATA_SIZE) {
+    parts.push(data.substring(i, i + MAX_QR_DATA_SIZE));
+  }
+  return parts;
 }
 
-// Скачать QR
-downloadQRBtn.addEventListener('click', () => {
-    const qrCanvas = qrcodeContainer.querySelector('canvas');
-    if (qrCanvas) {
-        const link = document.createElement('a');
-        link.href = qrCanvas.toDataURL('image/png');
-        link.download = 'qrcode.png';
-        link.click();
-    } else {
-        alert('Создайте QR-код перед скачиванием.');
-    }
-});
-
-// Информация о QR
-infoBtn.addEventListener('click', () => {
-    alert('Данный QR-код создан для передачи данных. Модель и тип зависят от содержимого.');
-});
-
-// Декодер с камерой
-let videoStream = null;
-startCameraBtn.addEventListener('click', () => {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-            videoStream = stream;
-            video.srcObject = stream;
-            video.style.display = 'block';
-            scanQRCode();
-        })
-        .catch(err => {
-            alert('Не удалось получить доступ к камере: ' + err);
-        });
-});
-
-function scanQRCode() {
-    const ctx = canvas.getContext('2d');
-    const scan = () => {
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code) {
-                decodedResult.innerText = 'Расшифрованный текст: ' + code.data;
-                // Остановить видеопоток
-                if (videoStream) {
-                    videoStream.getTracks().forEach(track => track.stop());
-                }
-                video.style.display = 'none';
-                return;
-            } else {
-                requestAnimationFrame(scan);
-            }
-        } else {
-            requestAnimationFrame(scan);
-        }
-    };
-    scan();
+// Функция для генерации QR-кода (предположим, у вас есть existing generateQRCode)
+function generateQRCode(data) {
+  // Это должна быть ваша существующая функция или вызов библиотеки
+  // Например, если используете qrcode.js:
+  const qrContainer = document.getElementById('qrcode'); // или любой контейнер
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, {
+    text: data,
+    width: 256,
+    height: 256
+  });
 }
 
-// Обработка загрузки файла QR-кода
-uploadImage.addEventListener('change', () => {
-    const file = uploadImage.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code) {
-                decodedResult.innerText = 'Расшифрованный текст: ' + code.data;
-            } else {
-                decodedResult.innerText = 'QR-код не найден или поврежден.';
-            }
-        };
-        img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+// Отображение серии QR-кодов для файла
+function encodeFile(file) {
+  const reader = new FileReader();
+  reader.onload = function() {
+    const arrayBuffer = reader.result;
+    const bytes = new Uint8Array(arrayBuffer);
+    // Конвертация в строку Base64
+    let binaryStr = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binaryStr += String.fromCharCode(bytes[i]);
+    }
+    const base64String = btoa(binaryStr);
+    const parts = splitData(base64String);
+    // Генерируем QR-коды для каждой части
+    // Можно показывать их по очереди или по одной
+    // Для примера — показываем последовательно по кнопке
+    displayQRCodeSeries(parts);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Отображение серии QR-кодов
+let qrSeries = [];
+let currentQRIndex = 0;
+
+function displayQRCodeSeries(parts) {
+  qrSeries = parts;
+  currentQRIndex = 0;
+  showNextQRCode();
+}
+
+function showNextQRCode() {
+  if (currentQRIndex >= qrSeries.length) {
+    alert('Все QR-коды показаны. Можно сканировать их для восстановления файла.');
+    return;
+  }
+  const qrData = JSON.stringify({
+    part: currentQRIndex + 1,
+    total: qrSeries.length,
+    data: qrSeries[currentQRIndex]
+  });
+  generateQRCode(qrData);
+  currentQRIndex++;
+}
+
+// Обработка сканирования QR-кода
+// В вашем сайте должна быть функция, вызываемая при сканировании
+// Например, добавим функцию handleScannedQR(qrText)
+
+function handleScannedQR(qrText) {
+  try {
+    const obj = JSON.parse(qrText);
+    if (obj.part && obj.total && obj.data) {
+      // Инициализация при первой части
+      if (obj.part === 1) {
+        receivedParts = [];
+        totalParts = obj.total;
+      }
+      receivedParts[obj.part - 1] = obj.data;
+
+      // Проверяем, все ли части получены
+      if (receivedParts.filter(Boolean).length === totalParts) {
+        // Собираем файл
+        const fullBase64 = receivedParts.join('');
+        const binaryStr = atob(fullBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        // Создаем Blob и кнопку скачивания
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
+        createDownloadButton(blob);
+        // Очистка
+        receivedParts = [];
+        totalParts = 0;
+      }
+    }
+  } catch (e) {
+    console.error('Ошибка при обработке QR-кода:', e);
+  }
+}
+
+// Создает кнопку для скачивания файла
+function createDownloadButton(blob) {
+  const btnContainer = document.getElementById('downloadBtnContainer');
+  btnContainer.innerHTML = '';
+
+  const url = URL.createObjectURL(blob);
+  const btn = document.createElement('a');
+  btn.href = url;
+  btn.download = 'file';
+  btn.textContent = 'Скачать файл из QR';
+  btn.className = 'download-btn';
+
+  btnContainer.appendChild(btn);
+}
+
+// Обработка выбора файла для кодирования
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    encodeFile(file);
+  }
 });
+
+// Обработка кнопки "Показать следующий QR-код" (если делаете так)
+document.getElementById('nextQRBtn')?.addEventListener('click', showNextQRCode);
+
+// Вызовите эту функцию при необходимости очистки
+function reset() {
+  document.getElementById('qrcode').innerHTML = '';
+  document.getElementById('downloadBtnContainer').innerHTML = '';
+  receivedParts = [];
+  totalParts = 0;
+}
+
+// Ваша существующая логика для сканирования QR-кодов должна вызывать handleScannedQR(qrText)
+// Например, при успешном сканировании QR-кода вызываете эту функцию
+
+// --- Конец файла ---
