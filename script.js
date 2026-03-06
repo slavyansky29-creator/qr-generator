@@ -1,147 +1,175 @@
 const generateBtn = document.getElementById('generateBtn');
-const dataInput = document.getElementById('dataInput');
-const qrCanvas = document.getElementById('qrCanvas');
+const downloadQRBtn = document.getElementById('downloadQRBtn');
 const infoBtn = document.getElementById('infoBtn');
-const qrInfoDiv = document.getElementById('qrInfo');
+const qrcodeContainer = document.getElementById('qrcode');
 
-const selectFileBtn = document.getElementById('selectFileBtn');
+const textInput = document.getElementById('textInput');
 const fileInput = document.getElementById('fileInput');
+const chooseFileBtn = document.getElementById('chooseFileBtn');
+const logoUpload = document.getElementById('logoUpload');
 
-const logoInput = document.getElementById('logoInput');
+const dataTypeSelect = document.getElementById('dataType');
 
 const startCameraBtn = document.getElementById('startCameraBtn');
+const uploadImage = document.getElementById('uploadImage');
 const video = document.getElementById('video');
-const videoCanvas = document.getElementById('videoCanvas');
-const decodedResultDiv = document.getElementById('decodedResult');
+const canvas = document.getElementById('canvas');
+const decodedResult = document.getElementById('decodedResult');
 
-const decodeFileInput = document.getElementById('decodeFileInput');
+let currentQRCode = null;
+let qrCodeInstance = null;
 
-// Вместо хранения объекта Image будем хранить только DataURL логотипа
-let currentLogoSrc = null;
-
-// Загрузка файла для кодирования
-selectFileBtn.onclick = () => {
+// Обработка выбора файла
+chooseFileBtn.addEventListener('click', () => {
     fileInput.click();
-};
-
-fileInput.onchange = () => {
-    const file = fileInput.files[0];
-    if (file) {
+});
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-            dataInput.value = reader.result;
+            textInput.value = reader.result; // Для удобства, можно вставить как base64
         };
         reader.readAsDataURL(file);
     }
-};
+});
 
-// Загрузка логотипа – сохраняем DataURL
-logoInput.onchange = () => {
-    const file = logoInput.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-            currentLogoSrc = reader.result;
-        };
-        reader.readAsDataURL(file);
-    }
-};
+// Создание QR-кода
+generateBtn.addEventListener('click', () => {
+    // Очистка предыдущего QR
+    qrcodeContainer.innerHTML = '';
 
-// Генерация QR-кода
-generateBtn.onclick = () => {
-    const data = dataInput.value.trim();
-    if (!data) {
-        alert('Пожалуйста, введите данные или выберите файл.');
-        return;
-    }
+    let data = '';
+    const type = dataTypeSelect.value;
 
-    // Очистить предыдущий QR-код
-    const ctx = qrCanvas.getContext('2d');
-    ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
-
-    // Создать QR-код
-    QRCode.toCanvas(qrCanvas, data, { width: 300 }, (error) => {
-        if (error) {
-            alert('Ошибка генерации QR-кода: ' + error.message);
-            console.error(error);
+    if (type === 'text') {
+        data = textInput.value;
+    } else {
+        // Для файлов и архивов, можно использовать base64
+        data = textInput.value;
+        if (!data) {
+            alert('Пожалуйста, введите текст или выберите файл.');
             return;
         }
+    }
 
-        // Если есть логотип, вставляем его после полной загрузки изображения
-        if (currentLogoSrc) {
-            const logo = new Image();
-            logo.onload = () => {
-                const size = 60; // размер логотипа
-                ctx.drawImage(logo, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
-            };
-            logo.onerror = () => {
-                console.warn('Не удалось загрузить логотип');
-            };
-            logo.src = currentLogoSrc;
-        }
+    // Встроить логотип, если выбран
+    const logoFile = logoUpload.files[0];
+    if (logoFile) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            createQRCode(data, reader.result);
+        };
+        reader.readAsDataURL(logoFile);
+    } else {
+        createQRCode(data, null);
+    }
+});
+
+// Функция создания QR
+function createQRCode(data, logoDataUrl) {
+    // Используем QRCode.js
+    // Можно дополнительно вставить логотип в центр, создавая свой собственный элемент или вставляя в canvas
+    qrCodeInstance = new QRCode(qrcodeContainer, {
+        text: data,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.H,
     });
-};
 
-// Получить информацию о QR-коде
-infoBtn.onclick = () => {
-    const preview = dataInput.value.substring(0, 50);
-    qrInfoDiv.innerHTML = `<p>Это QR-код, созданный для данных: ${preview}...</p>`;
-};
+    if (logoDataUrl) {
+        // Вставляем логотип в центр
+        const qrElement = qrcodeContainer.querySelector('canvas');
+        if (qrElement) {
+            const ctx = qrElement.getContext('2d');
+            const logoImg = new Image();
+            logoImg.onload = () => {
+                const size = 50; // Размер логотипа
+                ctx.drawImage(logoImg, (qrElement.width - size) / 2, (qrElement.height - size) / 2, size, size);
+            };
+            logoImg.src = logoDataUrl;
+        }
+    }
+}
 
-// Декодирование через камеру
-let decoding = false;
-startCameraBtn.onclick = () => {
+// Скачать QR
+downloadQRBtn.addEventListener('click', () => {
+    const qrCanvas = qrcodeContainer.querySelector('canvas');
+    if (qrCanvas) {
+        const link = document.createElement('a');
+        link.href = qrCanvas.toDataURL('image/png');
+        link.download = 'qrcode.png';
+        link.click();
+    }
+});
+
+// Информация о QR
+infoBtn.addEventListener('click', () => {
+    alert('Данный QR-код создан для передачи данных. Модель и тип зависят от содержимого.');
+});
+
+// Декодер с камерой
+let videoStream = null;
+startCameraBtn.addEventListener('click', () => {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(stream => {
+            videoStream = stream;
             video.srcObject = stream;
             video.style.display = 'block';
-            video.play();
-            decoding = true;
             scanQRCode();
         })
         .catch(err => {
             alert('Не удалось получить доступ к камере: ' + err);
         });
-};
+});
 
 function scanQRCode() {
-    if (!decoding) return;
-    const ctx = videoCanvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-    const imageData = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
-    if (code) {
-        decoding = false;
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.style.display = 'none';
-        decodedResultDiv.innerText = 'Результат: ' + code.data;
-    } else {
-        setTimeout(scanQRCode, 500);
-    }
+    const ctx = canvas.getContext('2d');
+    const scan = () => {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                decodedResult.innerText = 'Расшифрованный текст: ' + code.data;
+                // Остановить видеопоток
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+                video.style.display = 'none';
+                return;
+            } else {
+                requestAnimationFrame(scan);
+            }
+        } else {
+            requestAnimationFrame(scan);
+        }
+    };
+    scan();
 }
 
-// Обработка файла для декодирования
-decodeFileInput.onchange = () => {
-    const file = decodeFileInput.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-                const ctx = document.createElement('canvas').getContext('2d');
-                ctx.canvas.width = img.width;
-                ctx.canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, img.width, img.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                if (code) {
-                    decodedResultDiv.innerText = 'Результат: ' + code.data;
-                } else {
-                    decodedResultDiv.innerText = 'QR-код не найден или не распознан.';
-                }
-            };
-            img.src = reader.result;
+// Обработка загрузки файла QR-кода
+uploadImage.addEventListener('change', () => {
+    const file = uploadImage.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                decodedResult.innerText = 'Расшифрованный текст: ' + code.data;
+            } else {
+                decodedResult.innerText = 'QR-код не найден или поврежден.';
+            }
         };
-        reader.readAsDataURL(file);
-    }
-};
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+});
