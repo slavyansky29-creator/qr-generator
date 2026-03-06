@@ -16,7 +16,8 @@ const decodedResultDiv = document.getElementById('decodedResult');
 
 const decodeFileInput = document.getElementById('decodeFileInput');
 
-let currentLogoImage = null;
+// Вместо хранения объекта Image будем хранить только DataURL логотипа
+let currentLogoSrc = null;
 
 // Загрузка файла для кодирования
 selectFileBtn.onclick = () => {
@@ -34,15 +35,13 @@ fileInput.onchange = () => {
     }
 };
 
-// Загрузка логотипа
+// Загрузка логотипа – сохраняем DataURL
 logoInput.onchange = () => {
     const file = logoInput.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = () => {
-            const img = new Image();
-            img.src = reader.result;
-            currentLogoImage = img;
+            currentLogoSrc = reader.result;
         };
         reader.readAsDataURL(file);
     }
@@ -57,29 +56,36 @@ generateBtn.onclick = () => {
     }
 
     // Очистить предыдущий QR-код
-    qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+    const ctx = qrCanvas.getContext('2d');
+    ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 
     // Создать QR-код
     QRCode.toCanvas(qrCanvas, data, { width: 300 }, (error) => {
         if (error) {
+            alert('Ошибка генерации QR-кода: ' + error.message);
             console.error(error);
-        } else {
-            // Если есть логотип, вставить его в центр QR
-            if (currentLogoImage) {
-                const ctx = qrCanvas.getContext('2d');
+            return;
+        }
+
+        // Если есть логотип, вставляем его после полной загрузки изображения
+        if (currentLogoSrc) {
+            const logo = new Image();
+            logo.onload = () => {
                 const size = 60; // размер логотипа
-                ctx.drawImage(currentLogoImage, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
-            }
+                ctx.drawImage(logo, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
+            };
+            logo.onerror = () => {
+                console.warn('Не удалось загрузить логотип');
+            };
+            logo.src = currentLogoSrc;
         }
     });
 };
 
 // Получить информацию о QR-коде
 infoBtn.onclick = () => {
-    const dataUrl = qrCanvas.toDataURL();
-    // Можно использовать сторонние библиотеки для определения типа QR-кода.
-    // Для упрощения, показываем просто, что это QR-код.
-    qrInfoDiv.innerHTML = `<p>Это QR-код, созданный для данных: ${dataInput.value.substring(0,50)}...</p>`;
+    const preview = dataInput.value.substring(0, 50);
+    qrInfoDiv.innerHTML = `<p>Это QR-код, созданный для данных: ${preview}...</p>`;
 };
 
 // Декодирование через камеру
