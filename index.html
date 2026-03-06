@@ -3,46 +3,65 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>QR-код генератор и декодер</title>
+    <title>QR-кодер и декодер</title>
     <link rel="stylesheet" href="style.css" />
-    <!-- Вставляем библиотеку для генерации QR -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/dist/qrcode.min.js"></script>
-    <!-- Вставляем библиотеку для декодирования QR -->
+    <!-- Подключение библиотеки для генерации QR-кодов -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Подключение библиотеки для чтения QR-кодов -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 </head>
 <body>
-    <h1>QR-код генератор и декодер</h1>
+    <h1>QR-кодировщик и декодер</h1>
     <div class="container">
-        <!-- Левая панель: параметры -->
+        <!-- Левая часть: параметры создания QR -->
         <div class="left-panel">
-            <h2>Параметры</h2>
-            <textarea id="dataInput" placeholder="Введите текст или выберите файл для кодирования..." rows="5"></textarea>
-            <button id="selectFileBtn">Выбрать файл</button>
-            <input type="file" id="fileInput" style="display:none"/>
-            <br/><br/>
-            <label>Добавить логотип (опционально):</label>
-            <input type="file" id="logoInput" accept="image/*"/>
-            <br/><br/>
+            <h2>Создать QR-код</h2>
+            <label for="dataType">Тип данных:</label>
+            <select id="dataType">
+                <option value="text">Текст</option>
+                <option value="file">Файл / Фото / Видео</option>
+                <option value="archive">Архив</option>
+                <option value="folder">Папка</option>
+                <option value="presentation">Презентация</option>
+            </select>
+
+            <div id="inputContainer">
+                <label for="textInput">Введите текст или выберите файл:</label>
+                <textarea id="textInput" rows="4" placeholder="Введите текст"></textarea>
+                <input type="file" id="fileInput" style="display:none;" />
+                <button id="chooseFileBtn">Выбрать файл</button>
+            </div>
+
+            <!-- Возможность добавить логотип в центр -->
+            <div class="logo-section">
+                <label for="logoUpload">Добавить логотип (опционально):</label>
+                <input type="file" id="logoUpload" accept="image/*" />
+            </div>
+
             <button id="generateBtn">Создать QR-код</button>
-            <button id="infoBtn">Информация о QR-коде</button>
-            <div id="qrInfo" class="qr-info"></div>
+            <button id="downloadQRBtn">Скачать QR</button>
+            <button id="infoBtn">i</button>
         </div>
-        <!-- Правая панель: отображение QR -->
-        <div class="right-panel">
-            <h2>Генерированный QR-код</h2>
-            <canvas id="qrCanvas"></canvas>
+
+        <!-- Правая часть: отображение QR -->
+        <div class="center-panel">
+            <h2>QR-код</h2>
+            <div id="qrcode"></div>
+        </div>
+
+        <!-- Внизу: декодер -->
+        <div class="bottom-panel">
+            <h2>Декодировать QR-код</h2>
+            <div class="decoder-options">
+                <button id="startCameraBtn">Использовать камеру</button>
+                <input type="file" id="uploadImage" accept="image/*" />
+            </div>
+            <video id="video" width="400" height="300" style="display:none"></video>
+            <canvas id="canvas" style="display:none"></canvas>
+            <div id="decodedResult"></div>
         </div>
     </div>
-    <!-- Декодер -->
-    <h2>Декодировать QR-код</h2>
-    <div class="decoder-section">
-        <button id="startCameraBtn">Использовать камеру</button>
-        <input type="file" id="decodeFileInput" accept="image/*"/>
-        <br/><br/>
-        <video id="video" width="400" height="300" style="display:none;"></video>
-        <canvas id="videoCanvas" width="400" height="300" style="display:none;"></canvas>
-        <div id="decodedResult">Результат: </div>
-    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
