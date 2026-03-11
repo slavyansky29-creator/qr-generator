@@ -1,50 +1,108 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>QR-код генератор и декодер</title>
-    <link rel="stylesheet" href="style.css" />
-    <!-- Вставляем библиотеку для генерации QR -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/dist/qrcode.min.js"></script>
-    <!-- Вставляем библиотеку для декодирования QR -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR код: создание и сканирование</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-    <h1>QR-код генератор и декодер</h1>
-    <div class="container">
-        <!-- Левая панель: параметры -->
-        <div class="left-panel">
-            <h2>Параметры</h2>
-            <textarea id="dataInput" placeholder="Введите текст или выберите файл для кодирования..." rows="5"></textarea>
-            <button id="selectFileBtn">Выбрать файл</button>
-            <input type="file" id="fileInput" style="display:none"/>
-            <br/><br/>
-            <label>Добавить логотип (опционально):</label>
-            <input type="file" id="logoInput" accept="image/*"/>
-            <br/><br/>
-            <button id="generateBtn">Создать QR-код</button>
-            <button id="infoBtn">Информация о QR-коде</button>
-            <div id="qrInfo" class="qr-info"></div>
+    <div class="wrapper">
+        <!-- Верхняя часть: создание QR -->
+        <div class="creator">
+            <div class="creator-left">
+                <select id="qr-type">
+                    <option value="text">Текст</option>
+                    <option value="url">Ссылка</option>
+                    <option value="wifi">Wi-Fi</option>
+                    <option value="vcard">Контакт</option>
+                </select>
+
+                <!-- Текст -->
+                <div id="text-input">
+                    <input type="text" id="text-content" placeholder="Введите текст...">
+                </div>
+
+                <!-- URL -->
+                <div id="url-input" style="display: none;">
+                    <input type="url" id="url-content" placeholder="https://...">
+                </div>
+
+                <!-- Wi-Fi -->
+                <div id="wifi-input" style="display: none;">
+                    <input type="text" id="wifi-ssid" placeholder="Название сети">
+                    <input type="text" id="wifi-password" placeholder="Пароль">
+                    <select id="wifi-encryption">
+                        <option value="WPA">WPA/WPA2</option>
+                        <option value="WEP">WEP</option>
+                        <option value="nopass">Без пароля</option>
+                    </select>
+                </div>
+
+                <!-- vCard -->
+                <div id="vcard-input" style="display: none;">
+                    <input type="text" id="vcard-name" placeholder="Имя Фамилия">
+                    <input type="tel" id="vcard-phone" placeholder="Телефон">
+                    <input type="email" id="vcard-email" placeholder="Email">
+                </div>
+
+                <div class="logo-section">
+                    <input type="file" id="logo-upload" accept="image/*">
+                    <label for="logo-upload">➕ Логотип</label>
+                    <button id="remove-logo" class="remove-logo-btn" title="Убрать логотип">🗑️</button>
+                </div>
+
+                <button id="generate-btn" class="generate-btn">Создать QR код</button>
+            </div>
+
+            <div class="creator-right">
+                <div class="qr-box">
+                    <canvas id="qr-canvas"></canvas>
+                    <button id="info-btn" class="info-btn" title="Как определить тип QR">?</button>
+                </div>
+            </div>
         </div>
-        <!-- Правая панель: отображение QR -->
-        <div class="right-panel">
-            <h2>Генерированный QR-код</h2>
-            <canvas id="qrCanvas"></canvas>
+
+        <!-- Нижняя часть: декодер -->
+        <div class="decoder">
+            <div class="decoder-left">
+                <div class="camera-buttons">
+                    <button id="start-camera" class="camera-btn">📷 Включить камеру</button>
+                    <button id="stop-camera" class="camera-btn stop">⏹ Выключить</button>
+                </div>
+                <div id="camera-container" class="camera-container"></div>
+            </div>
+
+            <div class="decoder-right">
+                <div class="file-upload">
+                    <input type="file" id="qr-file" accept="image/*">
+                    <label for="qr-file">📁 Выбрать фото</label>
+                </div>
+                <div id="result-content" class="result-box">
+                    Результат появится здесь...
+                </div>
+            </div>
+        </div>
+
+        <!-- Информационное окно -->
+        <div id="info-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close">✕</span>
+                <h3>Как определить тип QR кода</h3>
+                <div class="info-list">
+                    <p><span class="badge">📝</span> <strong>Текст/URL</strong> — обычный QR, квадраты по углам</p>
+                    <p><span class="badge">📶</span> <strong>Wi-Fi</strong> — начинается с "WIFI:"</p>
+                    <p><span class="badge">👤</span> <strong>vCard</strong> — начинается с "BEGIN:VCARD"</p>
+                    <p><span class="badge">🔲</span> <strong>iQR Code</strong> — более плотные точки</p>
+                    <p><span class="badge">🔒</span> <strong>SQRC</strong> — с ограниченным доступом</p>
+                </div>
+            </div>
         </div>
     </div>
-    <!-- Декодер -->
-    <h2>Декодировать QR-код</h2>
-    <div class="decoder-section">
-        <button id="startCameraBtn">Использовать камеру</button>
-        <input type="file" id="decodeFileInput" accept="image/*"/>
-        <br/><br/>
-        <video id="video" width="400" height="300" style="display:none;"></video>
-        <canvas id="videoCanvas" width="400" height="300" style="display:none;"></canvas>
-        <div id="decodedResult">Результат: </div>
-    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
-
-
