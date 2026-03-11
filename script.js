@@ -1,5 +1,5 @@
 // Глобальные переменные
-let qrCode = nul;
+let qrCode = null;
 let html5QrCode = null;
 let currentLogo = null;
 
@@ -240,4 +240,5 @@ window.onclick = function(event) {
         modal.style.display = 'none';
     }
 };
+
 
