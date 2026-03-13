@@ -1,3 +1,4 @@
+/* style.css - измененный файл */
 * {
     margin: 0;
     padding: 0;
@@ -6,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: white; /* Изменено с градиента на белый */
     min-height: 100vh;
     padding: 20px;
 }
@@ -25,9 +26,8 @@ h1 {
     color: #333;
     margin-bottom: 30px;
     font-size: 2.5em;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    /* Убираем градиентный текст, делаем обычный */
+    color: #333;
 }
 
 h2 {
@@ -198,11 +198,11 @@ h2 {
     border-left: 4px solid #667eea;
 }
 
-/* Кнопки */
+/* Кнопки - изменены с закругленных на прямые */
 .btn {
     padding: 12px 24px;
     border: none;
-    border-radius: 8px;
+    border-radius: 0; /* Изменено с 8px на 0 */
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
