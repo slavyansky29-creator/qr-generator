@@ -86,9 +86,9 @@ function generateQRCode() {
             break;
     }
     
-    // Создаем QR код
+    // Создаем QR код с поддержкой UTF-8
     const qr = qrcode(0, 'H');
-    qr.addData(data);
+    qr.addData(unescape(encodeURIComponent(data)), 'Byte'); // Исправлено для поддержки русских букв
     qr.make();
     
     // Получаем canvas и рисуем QR
@@ -240,5 +240,3 @@ window.onclick = function(event) {
         modal.style.display = 'none';
     }
 };
-
-
